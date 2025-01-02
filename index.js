@@ -35,7 +35,7 @@ app.get('/', (req, res) => {
 });
 
 // Route to log a visit
-app.post('/visit', (req, res) => {
+app.get('/visit', (req, res) => {
   const { page, time } = req.body;
 
   if (!page || !time) {
