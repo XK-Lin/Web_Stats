@@ -17,6 +17,7 @@ if (!fs.existsSync(dataFilePath)) {
 // Middleware
 app.use(express.json()); // Parse incoming JSON requests
 app.use(cors({ origin: 'https://xk-lin.github.io' })); // Allow requests from GitHub Pages
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
 
 // Load visits data
 function loadVisits() {
@@ -27,6 +28,11 @@ function loadVisits() {
 function saveVisits(data) {
   fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
 }
+
+// Root route
+app.get('/', (req, res) => {
+  res.send('<h1>Welcome to the Visit Tracker Server!</h1>');
+});
 
 // Route to log a visit
 app.post('/visit', (req, res) => {
