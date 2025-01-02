@@ -1,48 +1,63 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// File to store statistics
-const statsFilePath = path.join(__dirname, 'stats.json');
+// Path to JSON file for storing visit data
+const dataFilePath = path.join(__dirname, 'visits.json');
 
-// Load or initialize stats
-let stats = {
-  visits: 0,
-  details: [] // Stores details of each visit
-};
-
-if (fs.existsSync(statsFilePath)) {
-  stats = JSON.parse(fs.readFileSync(statsFilePath, 'utf8'));
+// Initialize visits data if the file doesn't exist
+if (!fs.existsSync(dataFilePath)) {
+  fs.writeFileSync(dataFilePath, JSON.stringify({ visits: [], total: 0 }, null, 2));
 }
 
-// Middleware to log visits
-app.use((req, res, next) => {
-  const visitDetails = {
-    time: new Date().toISOString(), // Record visit time
-    ip: req.ip,                     // Record visitor's IP
-    url: req.url                    // Record accessed URL
-  };
+// Middleware
+app.use(express.json()); // Parse incoming JSON requests
+app.use(cors({ origin: 'https://xk-lin.github.io' })); // Allow requests from GitHub Pages
 
-  stats.visits += 1;
-  stats.details.push(visitDetails); // Save visit details
-  
-  // Save stats to file
-  fs.writeFileSync(statsFilePath, JSON.stringify(stats, null, 2));
-  
-  next();
+// Load visits data
+function loadVisits() {
+  return JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
+}
+
+// Save visits data
+function saveVisits(data) {
+  fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+}
+
+// Route to log a visit
+app.post('/visit', (req, res) => {
+  const { page, time } = req.body;
+
+  if (!page || !time) {
+    return res.status(400).json({ error: 'Invalid data' });
+  }
+
+  const ip = req.ip; // Get the IP address of the visitor
+  const visit = { ip, page, time };
+
+  // Load, update, and save visits data
+  const data = loadVisits();
+  data.visits.push(visit);
+  data.total += 1;
+  saveVisits(data);
+
+  res.json({ message: 'Visit logged successfully', visit });
 });
 
-// Home route
-app.get('/', (req, res) => {
-  res.send(`<h1>Welcome!</h1><p>Total Visits: ${stats.visits}</p>`);
+// Route to get total visits
+app.get('/total-visits', (req, res) => {
+  const data = loadVisits();
+  res.json({ totalVisits: data.total });
 });
 
-// Statistics route
+// Route to get all visits
 app.get('/stats', (req, res) => {
-  res.json(stats);
+  const data = loadVisits();
+  res.json(data.visits);
 });
 
 // Start the server
